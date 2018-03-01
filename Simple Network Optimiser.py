@@ -13,10 +13,9 @@ Rules w.r.t. the data:
 
 import pandas as pd
 import pulp
-import inspect
 import itertools
 
-DataPath = "C:\\Users\\tcvandongen\\Desktop\\Project X\\Network Optimisation\\ModelData.xlsx"
+DataPath = "C:\\Users\\tcvandongen\\Desktop\\Project X\\Network Optimisation\\ModelData (shortage).xlsx"
 
 # Read the entire excel file in a dataframe
 xl = pd.ExcelFile(DataPath)
@@ -80,6 +79,12 @@ if 'LocationGroups' in ModelData:
     LocationGroups = ModelData['LocationGroups']
 else:
     LocationGroups = []
+
+Locations.remove("Depot2")
+Locations.remove("Customer2")
+Locations.remove("Customer3")
+Locations.remove("Customer4")
+Locations.remove("Customer5")
 
 AllLocations = Locations + LocationGroups
 
@@ -168,161 +173,202 @@ for item in Streams:
 
 
 # Read the parameters
-SupplyCost = ReadingTheData('SupplyCost', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup]) 
-MinSupply = ReadingTheData('MinSupply', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-MaxSupply = ReadingTheData('MaxSupply', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-MinTransport = ReadingTheData('MinTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
-MaxTransport = ReadingTheData('MaxTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
-CostTransport = ReadingTheData('CostTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
-MinDemand = ReadingTheData('MinDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-MaxDemand = ReadingTheData('MaxDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-PriceDemand = ReadingTheData('PriceDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-Yield = ReadingTheData('Yield', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup])
-MinProduction = ReadingTheData('MinProduction', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup]) 
-MaxProduction = ReadingTheData('MaxProduction', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup])
-MinInventory = ReadingTheData('MinInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-MaxInventory = ReadingTheData('MaxInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
-CostInventory = ReadingTheData('CostInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['SupplyCost'] = ReadingTheData('SupplyCost', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup]) 
+ModelData['MinSupply'] = ReadingTheData('MinSupply', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['MaxSupply'] = ReadingTheData('MaxSupply', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['MinTransport'] = ReadingTheData('MinTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
+ModelData['MaxTransport'] = ReadingTheData('MaxTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
+ModelData['CostTransport'] = ReadingTheData('CostTransport', ModelData, [AllTimePeriods, AllLocations, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, LocationGroup, StreamGroup])
+ModelData['MinDemand'] = ReadingTheData('MinDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['MaxDemand'] = ReadingTheData('MaxDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['PriceDemand'] = ReadingTheData('PriceDemand', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['Yield'] = ReadingTheData('Yield', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup])
+ModelData['MinProduction'] = ReadingTheData('MinProduction', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup]) 
+ModelData['MaxProduction'] = ReadingTheData('MaxProduction', ModelData, [AllTimePeriods, AllLocations, AllProductionUnits, AllStreams], [TimePeriodGroup, LocationGroup, ProductionUnitGroup, StreamGroup])
+ModelData['MinInventory'] = ReadingTheData('MinInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['MaxInventory'] = ReadingTheData('MaxInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
+ModelData['CostInventory'] = ReadingTheData('CostInventory', ModelData, [AllTimePeriods, AllLocations, AllStreams], [TimePeriodGroup, LocationGroup, StreamGroup])
 
 
-
-## Create the model
-
-
-model = pulp.LpProblem("Network Optimisation", pulp.LpMaximize)
-
-# Create the variables supply, transport & demand
-
-# Supply
-vSupply = pulp.LpVariable.dicts("Supply",(i for i in SupplyCost), lowBound = 0, cat='Continuous')
-
-# Transport
-vTransport = pulp.LpVariable.dicts("Transport",(i for i in CostTransport), lowBound = 0, cat='Continuous')
-
-# Production
-ProductionUnitsInLocations = set()
-for i in Yield:
-    j = list(i)
-    j.pop(-1)
-    ProductionUnitsInLocations.add(tuple(j))
+def SolveModel(ModelData, ShortageMode):
     
-## Create variable 
-vProcessed = pulp.LpVariable.dicts("Processed",(i for i in ProductionUnitsInLocations), lowBound = 0, cat='Continuous')
-vConsumed = pulp.LpVariable.dicts("Consumed",(i for i in Yield if Yield[i] < 0), lowBound = 0, cat='Continuous')
-vProduced = pulp.LpVariable.dicts("Produced",(i for i in Yield if Yield[i] > 0), lowBound = 0, cat='Continuous')
-
-## Demand
-vDemand = pulp.LpVariable.dicts("Demand",(i for i in PriceDemand), lowBound = 0, cat='Continuous')
-
-## Inventory
-vInventory = pulp.LpVariable.dicts("Inventory",(i for i in CostInventory), lowBound = 0, cat='Continuous')
-
-# Create the model objective
-model += pulp.lpSum([-SupplyCost[x]*vSupply[x] for x in SupplyCost] + [PriceDemand[x]*vDemand[x] for x in PriceDemand] + [-CostTransport[x]*vTransport[x] for x in CostTransport] + [-CostInventory[x]*vInventory[x] for x in CostInventory])
-
-# Create the model constraints
-for x in MinSupply:
-    check = [vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= MinSupply[x]
-    else:
-        print("MinSupply could not be declared for: "+str(x)+". Check if SupplyCost has been specified for these indices.")
-
-for x in MaxSupply:
-    check = [vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= MaxSupply[x]
-    else:
-        print("MaxSupply could not be declared for: "+str(x)+". Check if SupplyCost has been specified for these indices.")
-        
-for x in MinDemand:
-    check = [vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) >= MinDemand[x]
-    else:
-        print("MinDemand could not be declared for: "+str(x)+". Check if PriceDemand has been specified for these indices.")
+    ## Create the model
+    if ShortageMode == 0:
+        model = pulp.LpProblem("Network Optimisation", pulp.LpMaximize)
+    elif ShortageMode == 1:
+        model = pulp.LpProblem("Network Optimisation Shortage Model", pulp.LpMinimize)
     
-for x in MaxDemand:
-    check = [vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= MaxDemand[x]
-    else:
-        print("MaxDemand could not be declared for: "+str(x)+". Check if PriceDemand has been specified for these indices.")
-
-for x in MinTransport:
-    check = [vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))) >= MinTransport[x]
-    else:
-        print("MinTransport could not be declared for: "+str(x)+". Check if CostTransport has been specified for these indices.")
-
-for x in MaxTransport:
-    check = [vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
-    print(check)
-    if len(check) > 0:
-        model += pulp.lpSum(vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))) <= MaxTransport[x]
-    else:
-        print("MaxTransport could not be declared for: "+str(x)+". Check if CostTransport has been specified for these indices.")
-
-for x in MinInventory:
-    check = [vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) >= MinInventory[x]
-    else:
-        print("MinInventory could not be declared for: "+str(x)+". Check if InventoryCost has been specified for these indices.")
-        
-for x in MaxInventory:
-    check = [vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= MaxInventory[x]
-    else:
-        print("MaxInventory could not be declared for: "+str(x)+". Check if InventoryCost has been specified for these indices.")
-        
-for y in Yield:
-    CorrespondingUnit = tuple(list(y)[0:3])
-    if Yield[y] > 0:
-        model += vProduced[y] == vProcessed[CorrespondingUnit] * Yield[y]
-    else:
-        model += vConsumed[y] == vProcessed[CorrespondingUnit] * -Yield[y]
-        
-for x in MinProduction:
-    check = [vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))) >= MinProduction[x]
-    else:
-        print("MinProduction could not be declared for: "+str(x)+". Check if Yield has been specified for these indices.")
-        
-for x in MaxProduction:
-    check = [vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
-    if len(check) > 0:
-        model += pulp.lpSum(vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))) <= MaxProduction[x]
-    else:
-        print("MaxProduction could not be declared for: "+str(x)+". Check if Yield has been specified for these indices.")
-        
-        
-# Create the balance constraint
-for t in TimePeriods:
-    if TimePeriods.index(t) > 0:
-        t2 = TimePeriods[TimePeriods.index(t) - 1]
-        print("t = "+t+" and t2 = "+t2)
-    else:
-        t2 = "x"
-    for l in Locations:
-        for s in Streams:
-            model += sum(vSupply[z] for z in vSupply if (z[0] == t and z[1] == l and z[2] == s)) + sum(vTransport[z] for z in vTransport if (z[0] == t and z[2] == l and z[3] == s)) + sum(vProduced[z] for z in vProduced if (z[0] == t and z[1] == l and z[3] == s)) + sum(vInventory[z] for z in vInventory if (z[0] == t2 and z[1] == l and z[2] == s)) == sum(vDemand[z] for z in vDemand if (z[0] == t and z[1] == l and z[2] == s)) + sum(vTransport[z] for z in vTransport if (z[0] == t and z[1] == l and z[3] == s)) + sum(vConsumed[z] for z in vConsumed if (z[0] == t and z[1] == l and z[3] == s)) + sum(vInventory[z] for z in vInventory if (z[0] == t and z[1] == l and z[2] == s))
-        
-model.solve()
-
-
-for v in model.variables():
-    print(v.name, "=", v.varValue)
+    # Create the variables supply, transport & demand
     
-print(model)
+    # Supply
+    vSupply = pulp.LpVariable.dicts("Supply",(i for i in ModelData['SupplyCost']), lowBound = 0, cat='Continuous')
+    
+    # Transport
+    vTransport = pulp.LpVariable.dicts("Transport",(i for i in ModelData['CostTransport']), lowBound = 0, cat='Continuous')
+    
+    # Production
+    ProductionUnitsInLocations = set()
+    for i in ModelData['Yield']:
+        j = list(i)
+        j.pop(-1)
+        ProductionUnitsInLocations.add(tuple(j))
+        
+    ## Create variable 
+    vProcessed = pulp.LpVariable.dicts("Processed",(i for i in ProductionUnitsInLocations), lowBound = 0, cat='Continuous')
+    vConsumed = pulp.LpVariable.dicts("Consumed",(i for i in ModelData['Yield'] if ModelData['Yield'][i] < 0), lowBound = 0, cat='Continuous')
+    vProduced = pulp.LpVariable.dicts("Produced",(i for i in ModelData['Yield'] if ModelData['Yield'][i] > 0), lowBound = 0, cat='Continuous')
+    
+    ## Demand
+    vDemand = pulp.LpVariable.dicts("Demand",(i for i in ModelData['PriceDemand']), lowBound = 0, cat='Continuous')
+    
+    ## Inventory
+    vInventory = pulp.LpVariable.dicts("Inventory",(i for i in ModelData['CostInventory']), lowBound = 0, cat='Continuous')
+
+    
+    ## Create shortage/surplus variables
+    if (ShortageMode == 1):
+        vShortageMinSupply = pulp.LpVariable.dicts("ShortageMinSupply",(i for i in ModelData['MinSupply']), lowBound = 0, cat='Continuous')
+        vShortageMaxSupply = pulp.LpVariable.dicts("ShortageMaxSupply",(i for i in ModelData['MaxSupply']), lowBound = 0, cat='Continuous')
+        vShortageMinDemand = pulp.LpVariable.dicts("ShortageMinDemand",(i for i in ModelData['MinDemand']), lowBound = 0, cat='Continuous')
+        vShortageMaxDemand = pulp.LpVariable.dicts("ShortageMaxDemand",(i for i in ModelData['MaxDemand']), lowBound = 0, cat='Continuous')
+        vShortageMinTransport = pulp.LpVariable.dicts("ShortageMinTransport",(i for i in ModelData['MinTransport']), lowBound = 0, cat='Continuous')
+        vShortageMaxTransport = pulp.LpVariable.dicts("ShortageMaxTransport",(i for i in ModelData['MaxTransport']), lowBound = 0, cat='Continuous')
+        vShortageMinProduction = pulp.LpVariable.dicts("ShortageMinProduction",(i for i in ModelData['MinProduction']), lowBound = 0, cat='Continuous')
+        vShortageMaxProduction = pulp.LpVariable.dicts("ShortageMaxProduction",(i for i in ModelData['MaxProduction']), lowBound = 0, cat='Continuous')
+        vShortageMinInventory = pulp.LpVariable.dicts("ShortageMinInventory",(i for i in ModelData['MinInventory']), lowBound = 0, cat='Continuous')
+        vShortageMaxInventory = pulp.LpVariable.dicts("ShortageMaxInventory",(i for i in ModelData['MaxInventory']), lowBound = 0, cat='Continuous')
+        ShortageMinSupply = vShortageMinSupply
+        ShortageMaxSupply = vShortageMaxSupply
+        ShortageMinDemand = vShortageMinDemand
+        ShortageMaxDemand = vShortageMaxDemand
+        ShortageMinTransport = vShortageMinTransport
+        ShortageMaxTransport = vShortageMaxTransport
+        ShortageMinProduction = vShortageMinProduction
+        ShortageMaxProduction = vShortageMaxProduction
+        ShortageMinInventory = vShortageMinInventory
+        ShortageMaxInventory = vShortageMaxInventory
+    else:
+        ShortageMinSupply = {x: 0 for x in ModelData['MinSupply']}
+        ShortageMaxSupply = {x: 0 for x in ModelData['MaxSupply']}
+        ShortageMinDemand = {x: 0 for x in ModelData['MinDemand']}
+        ShortageMaxDemand = {x: 0 for x in ModelData['MaxDemand']}
+        ShortageMinTransport = {x: 0 for x in ModelData['MinTransport']}
+        ShortageMaxTransport = {x: 0 for x in ModelData['MaxTransport']}
+        ShortageMinProduction = {x: 0 for x in ModelData['MinProduction']}
+        ShortageMaxProduction = {x: 0 for x in ModelData['MaxProduction']}
+        ShortageMinInventory = {x: 0 for x in ModelData['MinInventory']}
+        ShortageMaxInventory = {x: 0 for x in ModelData['MaxInventory']}
+    
+    # Create the model constraints
+    for x in ModelData['MinSupply']:
+        check = [vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) >= ModelData['MinSupply'][x] - ShortageMinSupply[x]
+        else:
+            print("MinSupply could not be declared for: "+str(x)+". Check if SupplyCost has been specified for these indices.")
+    
+    for x in ModelData['MaxSupply']:
+        check = [vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vSupply[z] for z in vSupply if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= ModelData['MaxSupply'][x] + ShortageMaxSupply[x]
+        else:
+            print("MaxSupply could not be declared for: "+str(x)+". Check if SupplyCost has been specified for these indices.")
+            
+    for x in ModelData['MinDemand']:
+        check = [vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) >= ModelData['MinDemand'][x] - ShortageMinDemand[x]
+        else:
+            print("MinDemand could not be declared for: "+str(x)+". Check if PriceDemand has been specified for these indices.")
+        
+    for x in ModelData['MaxDemand']:
+        check = [vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vDemand[z] for z in vDemand if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= ModelData['MaxDemand'][x] + ShortageMaxDemand[x]
+        else:
+            print("MaxDemand could not be declared for: "+str(x)+". Check if PriceDemand has been specified for these indices.")
+    
+    for x in ModelData['MinTransport']:
+        check = [vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))) >= ModelData['MinTransport'][x] - ShortageMinTransport[x]
+        else:
+            print("MinTransport could not be declared for: "+str(x)+". Check if CostTransport has been specified for these indices.")
+    
+    for x in ModelData['MaxTransport']:
+        check = [vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
+        print(check)
+        if len(check) > 0:
+            model += pulp.lpSum(vTransport[z] for z in vTransport if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in LocationGroup) and (tuple([z[3],x[3]]) in StreamGroup))) <= ModelData['MaxTransport'][x] + ShortageMaxTransport[x]
+        else:
+            print("MaxTransport could not be declared for: "+str(x)+". Check if CostTransport has been specified for these indices.")
+    
+    for x in ModelData['MinInventory']:
+        check = [vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) >= ModelData['MinInventory'][x] - ShortageMinInventory[x]
+        else:
+            print("MinInventory could not be declared for: "+str(x)+". Check if InventoryCost has been specified for these indices.")
+            
+    for x in ModelData['MaxInventory']:
+        check = [vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vInventory[z] for z in vInventory if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in StreamGroup))) <= ModelData['MaxInventory'][x] + ShortageMaxInventory[x]
+        else:
+            print("MaxInventory could not be declared for: "+str(x)+". Check if InventoryCost has been specified for these indices.")
+            
+    for y in ModelData['Yield']:
+        CorrespondingUnit = tuple(list(y)[0:3])
+        if ModelData['Yield'][y] > 0:
+            model += vProduced[y] == vProcessed[CorrespondingUnit] * ModelData['Yield'][y]
+        else:
+            model += vConsumed[y] == vProcessed[CorrespondingUnit] * -ModelData['Yield'][y]
+            
+    for x in ModelData['MinProduction']:
+        check = [vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))) >= ModelData['MinProduction'][x] - ShortageMinProduction[x]
+        else:
+            print("MinProduction could not be declared for: "+str(x)+". Check if Yield has been specified for these indices.")
+            
+    for x in ModelData['MaxProduction']:
+        check = [vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))]
+        if len(check) > 0:
+            model += pulp.lpSum(vProduced[z] for z in vProduced if ((tuple([z[0],x[0]]) in TimePeriodGroup) and (tuple([z[1],x[1]]) in LocationGroup) and (tuple([z[2],x[2]]) in ProductionUnitGroup) and (tuple([z[3],x[3]]) in StreamGroup))) <= ModelData['MaxProduction'][x] + ShortageMaxProduction[x]
+        else:
+            print("MaxProduction could not be declared for: "+str(x)+". Check if Yield has been specified for these indices.")
+            
+    # Create the balance constraint
+    for t in TimePeriods:
+        if TimePeriods.index(t) > 0:
+            t2 = TimePeriods[TimePeriods.index(t) - 1]
+            print("t = "+t+" and t2 = "+t2)
+        else:
+            t2 = "x"
+        for l in Locations:
+            for s in Streams:
+                model += sum(vSupply[z] for z in vSupply if (z[0] == t and z[1] == l and z[2] == s)) + sum(vTransport[z] for z in vTransport if (z[0] == t and z[2] == l and z[3] == s)) + sum(vProduced[z] for z in vProduced if (z[0] == t and z[1] == l and z[3] == s)) + sum(vInventory[z] for z in vInventory if (z[0] == t2 and z[1] == l and z[2] == s)) == sum(vDemand[z] for z in vDemand if (z[0] == t and z[1] == l and z[2] == s)) + sum(vTransport[z] for z in vTransport if (z[0] == t and z[1] == l and z[3] == s)) + sum(vConsumed[z] for z in vConsumed if (z[0] == t and z[1] == l and z[3] == s)) + sum(vInventory[z] for z in vInventory if (z[0] == t and z[1] == l and z[2] == s))
+
+    # Create the model objective
+    if ShortageMode == 0:
+        model += pulp.lpSum([-ModelData['SupplyCost'][x]*vSupply[x] for x in ModelData['SupplyCost']] + [ModelData['PriceDemand'][x]*vDemand[x] for x in ModelData['PriceDemand']] + [-ModelData['CostTransport'][x]*vTransport[x] for x in ModelData['CostTransport']] + [-ModelData['CostInventory'][x]*vInventory[x] for x in ModelData['CostInventory']])
+    elif ShortageMode == 1:
+        print("New objective")
+   
+        
+    model.solve()
+
+    for v in model.variables():
+        print(v.name, "=", v.varValue)
+        
+    print(model)
+    
+    return pulp.LpStatus[model.status]
+
+Status = SolveModel(ModelData, 0)
+print(Status)
+
+if Status != "Optimal":
+    Status = SolveModel(ModelData, 1)
 
 
-for y in range(0,10):
-    print(y)
-    
-    print(x)
-    
-    print(z)
